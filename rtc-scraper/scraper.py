@@ -1,47 +1,22 @@
 from playwright.sync_api import sync_playwright, expect
 import time
 import os
-from datetime import datetime
 import re
-from urllib.parse import unquote
-import base64
-import requests
+import logging
+from datetime import datetime
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger('RTCScraper')
 
 class RTCScraper:
-    def __init__(self):
+    def __init__(self, db_handler=None):
         self.base_url = "https://landrecords.karnataka.gov.in/Service2/"
+        self.db_handler = db_handler
         
-    def _extract_image_url(self, content):
-        """Extract image URL from document content"""
-        match = re.search(r'src="(https://landrecords\.karnataka\.gov\.in/service2images//RTCPreviewPng/[^"]+)"', content)
-        return unquote(match.group(1)) if match else None
-
-    def _download_image(self, url, save_path):
-        """Download image from URL and save to path without any processing"""
-        try:
-            # Add headers to mimic a browser request
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'Connection': 'keep-alive',
-                'Referer': self.base_url
-            }
-            
-            # Make request with headers and stream the response
-            response = requests.get(url, headers=headers, verify=False, stream=True)
-            response.raise_for_status()
-            
-            # Write the raw bytes directly to file
-            with open(save_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
-            return True
-        except Exception as e:
-            print(f"Error downloading image: {str(e)}")
-            return False
-
     def _extract_year_from_period(self, period_text):
         """Extract the year from period text"""
         # First try to match the year pattern in parentheses
@@ -60,14 +35,23 @@ class RTCScraper:
         """Check if the year is within 2012-13 to 2020-21 range"""
         try:
             # Convert year text (e.g., "2012-2013") to start year
-            start_year = int(year_text.split('-')[0])
+            if not year_text:
+                return False
+                
+            # Handle both formats: "2012-13" and "2012-2013"
+            parts = year_text.split('-')
+            if len(parts) != 2:
+                return False
+                
+            # Get start year
+            start_year = int(parts[0])
             return 2012 <= start_year <= 2020
         except:
             return False
-
+            
     def scrape_documents(self, property_data):
         """
-        Scrape RTC documents for the given property
+        Scrape RTC documents for all periods within the target year range (2012-13 to 2020-21)
         """
         with sync_playwright() as p:
             # Launch the browser in visible mode with slower animations
@@ -81,104 +65,80 @@ class RTCScraper:
             page = context.new_page()
             
             try:
+                logger.info("Starting RTC document scraping with robust approach...")
                 # Navigate to the website
                 page.goto(self.base_url)
                 
                 # Click on "Old Year" button
                 page.get_by_role("button", name="Old Year").click()
                 
-                # Wait for district dropdown to be enabled
-                page.wait_for_selector("#ctl00_MainContent_ddlODist:not([disabled])")
-                
                 # Select District (Bangalore Rural = "21")
                 page.locator("#ctl00_MainContent_ddlODist").select_option("21")
-                time.sleep(2)  # Wait for server response
-                
-                # Wait for taluk dropdown to be enabled
-                page.wait_for_selector("#ctl00_MainContent_ddlOTaluk:not([disabled])")
                 
                 # Select Taluk (Devenahalli = "3")
                 page.locator("#ctl00_MainContent_ddlOTaluk").select_option("3")
-                time.sleep(2)  # Wait for server response
-                
-                # Wait for hobli dropdown to be enabled
-                page.wait_for_selector("#ctl00_MainContent_ddlOHobli:not([disabled])")
                 
                 # Select Hobli (Kasaba = "2")
                 page.locator("#ctl00_MainContent_ddlOHobli").select_option("2")
-                time.sleep(2)  # Wait for server response
-                
-                # Wait for village dropdown to be enabled
-                page.wait_for_selector("#ctl00_MainContent_ddlOVillage:not([disabled])")
                 
                 # Select Village (Devanahalli = "27")
                 page.locator("#ctl00_MainContent_ddlOVillage").select_option("27")
-                time.sleep(2)  # Wait for server response
                 
                 # Enter Survey Number
-                survey_input = page.get_by_placeholder("Survey Number")
-                survey_input.click()
-                survey_input.fill("22")
+                page.get_by_placeholder("Survey Number").click()
+                page.get_by_placeholder("Survey Number").fill("22")
+                
+                # Click Go button
                 page.get_by_role("button", name="Go").click()
-                time.sleep(2)  # Wait for server response
                 
-                # Sometimes need to click Go twice
+                # Click Go button again (as in your working script)
                 page.get_by_role("button", name="Go").click()
-                time.sleep(2)  # Wait for server response
                 
-                # Wait for Surnoc dropdown to be enabled
-                page.wait_for_selector("#ctl00_MainContent_ddlOSurnocNo:not([disabled])")
-                
-                # Select Surnoc
+                # Select Surnoc ("*")
                 page.locator("#ctl00_MainContent_ddlOSurnocNo").select_option("*")
-                time.sleep(2)  # Wait for server response
                 
-                # Wait for Hissa dropdown to be enabled
-                page.wait_for_selector("#ctl00_MainContent_ddlOHissaNo:not([disabled])")
-                
-                # Select Hissa
+                # Select Hissa ("53" as in your working script, not "1" from property_data)
                 page.locator("#ctl00_MainContent_ddlOHissaNo").select_option("53")
-                time.sleep(2)  # Wait for server response
-
+                
+                # Create a folder to save screenshots if it doesn't exist
+                screenshot_folder = os.path.join(os.path.dirname(__file__), 'screenshots')
+                os.makedirs(screenshot_folder, exist_ok=True)
+                
                 # Get all available periods
                 period_dropdown = page.locator("#ctl00_MainContent_ddlOPeriod")
-                periods = []
-                
-                # Wait for period dropdown to be enabled
-                page.wait_for_selector("#ctl00_MainContent_ddlOPeriod:not([disabled])")
-                
-                # Get all period options
                 period_options = period_dropdown.evaluate("""select => {
                     return Array.from(select.options).map(option => ({
                         value: option.value,
                         text: option.text
                     })).filter(option => option.value !== '0');
                 }""")
-
-                documents = []
+                
+                logger.info(f"Found {len(period_options)} periods: {period_options}")
                 
                 # Process each period
+                documents = []
                 for period_option in period_options:
-                    period = period_option['value']
+                    period_value = period_option['value']
                     period_text = period_option['text']
-                    target_year = self._extract_year_from_period(period_text)
                     
-                    if not target_year:
-                        print(f"Could not extract year from period: {period_text}")
-                        continue
-
-                    # Skip if year is not in our target range
-                    if not self._is_year_in_range(target_year):
-                        print(f"Skipping period outside target range: {period_text} ({target_year})")
-                        continue
-                        
                     try:
-                        # Select period
-                        page.locator("#ctl00_MainContent_ddlOPeriod").select_option(period)
-                        time.sleep(2)
+                        # Extract year from period text
+                        target_year = self._extract_year_from_period(period_text)
                         
-                        # Wait for year dropdown to be enabled
-                        page.wait_for_selector("#ctl00_MainContent_ddlOYear:not([disabled])")
+                        if not target_year:
+                            logger.info(f"Could not extract year from period: {period_text}, skipping")
+                            continue
+                            
+                        # Check if year is in our target range
+                        if not self._is_year_in_range(target_year):
+                            logger.info(f"Period {period_text} ({target_year}) is outside target range, skipping")
+                            continue
+                            
+                        logger.info(f"Processing period: {period_text} ({target_year})")
+                        
+                        # Select the period
+                        page.locator("#ctl00_MainContent_ddlOPeriod").select_option(period_value)
+                        time.sleep(1)
                         
                         # Get available years for this period
                         year_dropdown = page.locator("#ctl00_MainContent_ddlOYear")
@@ -189,91 +149,85 @@ class RTCScraper:
                             })).filter(option => option.value !== '0');
                         }""")
                         
-                        # Find the matching year option
+                        logger.info(f"Available years for period {period_text}: {year_options}")
+                        
+                        if not year_options:
+                            logger.warning(f"No year options found for period {period_text}")
+                            continue
+                            
+                        # Try to find the matching year option
                         matching_year = next((year for year in year_options if year['text'] == target_year), None)
                         
+                        # If no exact match, try a more flexible approach
+                        if not matching_year and year_options:
+                            logger.info(f"No exact match for year {target_year}, using first available year")
+                            matching_year = year_options[0]
+                            
                         if not matching_year:
-                            print(f"Could not find matching year {target_year} for period {period_text}")
+                            logger.warning(f"Could not find matching year for period {period_text}")
                             continue
                             
-                        try:
-                            # Select year
-                            page.locator("#ctl00_MainContent_ddlOYear").select_option(matching_year['value'])
-                            time.sleep(2)
-                            
-                            # Wait for Fetch details button to be enabled
-                            page.wait_for_selector("#ctl00_MainContent_btnOFetchDetails:not([disabled])")
-                            
-                            # Click Fetch details
-                            fetch_button = page.get_by_role("button", name="Fetch details")
-                            fetch_button.click()
-                            time.sleep(2)
-                            
-                            # Wait for View button
-                            view_button = page.get_by_role("button", name="View")
-                            view_button.wait_for(state="visible")
-                            
-                            # Click View and handle popup
-                            with page.expect_popup() as page1_info:
-                                view_button.click()
-                            page1 = page1_info.value
-                            
-                            # Wait for popup content and image to load
-                            page1.wait_for_load_state("networkidle")
-                            page1.wait_for_selector("#ImgSketchPage")
-                            time.sleep(2)  # Additional wait for image to render completely
-                            
-                            # Remove the API upload logic and save screenshots locally
-                            screenshot_folder = os.path.join(os.path.dirname(__file__), 'screenshots')
-                            os.makedirs(screenshot_folder, exist_ok=True)
-
-                            # Save the screenshot locally
-                            screenshot_path = os.path.join(screenshot_folder, f"RTC_{target_year}.png")
-                            page1.screenshot(path=screenshot_path)
-                            print(f"Screenshot saved locally at: {screenshot_path}")
-
-                            documents.append({
-                                'period': period,
-                                'period_text': period_text,
-                                'year': matching_year['value'],
-                                'year_text': matching_year['text'],
-                                'screenshot_path': screenshot_path
-                            })
-                            print(f"Successfully captured screenshot for {period_text} ({target_year})")
-                            
-                            # Close popup
-                            page1.close()
-                            time.sleep(2)
-                            
-                        except Exception as e:
-                            print(f"Error processing year {matching_year['text']} for period {period_text}: {str(e)}")
+                        # Select the year
+                        page.locator("#ctl00_MainContent_ddlOYear").select_option(matching_year['value'])
+                        time.sleep(1)
+                        
+                        # Click Fetch details
+                        page.get_by_role("button", name="Fetch details").click()
+                        time.sleep(1)
+                        
+                        # Check if View button is available
+                        view_button = page.get_by_role("button", name="View")
+                        if not view_button.is_visible():
+                            logger.warning(f"View button not available for period {period_text}")
                             continue
                             
+                        # Click View and handle popup
+                        with page.expect_popup() as popup_info:
+                            view_button.click()
+                        popup_page = popup_info.value
+                        
+                        # Wait for popup content and image to load
+                        popup_page.wait_for_load_state("networkidle")
+                        popup_page.wait_for_selector("#ImgSketchPage")
+                        time.sleep(2)  # Additional wait for image to render completely
+                        
+                        # Generate a clean filename
+                        clean_period = re.sub(r'[^\w\-]', '_', period_text)
+                        screenshot_path = os.path.join(screenshot_folder, f"RTC_{clean_period}_{matching_year['text']}.png")
+                        
+                        # Save the screenshot locally
+                        popup_page.screenshot(path=screenshot_path)
+                        logger.info(f"Screenshot saved locally at: {screenshot_path}")
+                        
+                        documents.append({
+                            'period': period_value,
+                            'period_text': period_text,
+                            'year': matching_year['value'],
+                            'year_text': matching_year['text'],
+                            'screenshot_path': screenshot_path
+                        })
+                        
+                        # Close popup
+                        popup_page.close()
+                        time.sleep(1)
+                        
                     except Exception as e:
-                        print(f"Error processing period {period_text}: {str(e)}")
+                        logger.error(f"Error processing period {period_text}: {str(e)}")
                         continue
-
-                # Create a folder to save screenshots if it doesn't exist
-                screenshot_folder = os.path.join(os.path.dirname(__file__), 'screenshots')
-                os.makedirs(screenshot_folder, exist_ok=True)
-
-                # Take a screenshot of the receipt when it appears
-                receipt_selector = "#ReceiptElement"  # Replace with the actual selector for the receipt
-                try:
-                    page.wait_for_selector(receipt_selector, timeout=60000)  # Wait for the receipt to appear
-                    receipt_screenshot_path = os.path.join(screenshot_folder, 'receipt_screenshot.png')
-                    page.locator(receipt_selector).screenshot(path=receipt_screenshot_path)
-                    print(f"Receipt screenshot saved at: {receipt_screenshot_path}")
-                except Exception as e:
-                    print(f"Error taking receipt screenshot: {str(e)}")
                 
+                logger.info(f"Successfully processed {len(documents)} documents")
                 return documents
                 
             except Exception as e:
-                print(f"Error during scraping: {str(e)}")
+                logger.error(f"Error during scraping: {str(e)}")
                 return None
                 
             finally:
+                if self.db_handler:
+                    try:
+                        self.db_handler.close()
+                    except:
+                        pass
                 context.close()
                 browser.close()
 
@@ -282,7 +236,7 @@ if __name__ == "__main__":
     property_data = {
         'survey_number': '22',
         'surnoc': '*',
-        'hissa': '1',
+        'hissa': '53',  # Changed from "1" to "53" to match working script
         'village': 'Devanahalli',
         'hobli': 'Kasaba',
         'taluk': 'Devenahalli',
@@ -291,4 +245,7 @@ if __name__ == "__main__":
     
     scraper = RTCScraper()
     documents = scraper.scrape_documents(property_data)
-    print("Documents:", documents)
+    print(f"Documents captured: {len(documents) if documents else 0}")
+    if documents:
+        for i, doc in enumerate(documents, 1):
+            print(f"{i}. Period: {doc['period_text']}, Year: {doc['year_text']}, Path: {doc['screenshot_path']}")
