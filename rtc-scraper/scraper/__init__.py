@@ -1,1 +1,0 @@
-# Initialize the scraper package

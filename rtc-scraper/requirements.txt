@@ -2,3 +2,4 @@ selenium
 requests
 pillow
 webdriver-manager
+psycopg2-binary
