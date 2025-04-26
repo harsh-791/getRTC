@@ -1,0 +1,56 @@
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+
+# Django/Flask/other DBs
+*.sqlite3
+db.sqlite3
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Logs
+*.log
+
+# Media/uploads (user-generated content, not code)
+rtc-scraper/media/
+!rtc-scraper/media/screenshots/.gitkeep  # (optional: keep folder structure)
+
+# Old screenshots folder (if it still exists)
+rtc-scraper/screenshots/
+
+# Environment variables and secrets
+.env
+rtc-scraper/.env
+
+# Node modules (React frontend)
+frontend/node_modules/
+
+# Build output (React)
+frontend/build/
+frontend/dist/
+
+# IDE/project files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+
+# Misc
+*.egg-info/
+dist/
+build/
+
+#Screenshots
+rtc-scraper/media/screenshots/
+rtc-scraper/media/screenshots/RTC_2025_2025.png
+rtc-scraper/media/screenshots/RTC_2025_2025.png
+rtc-scraper/media/screenshots/RTC_2025_2025.png
+rtc-scraper/media/screenshots/RTC_2025_2025.png
+rtc-scraper/media/screenshots/RTC_2025_2025.png
+rtc-scraper/media/screenshots/RTC_2025_2025.png
