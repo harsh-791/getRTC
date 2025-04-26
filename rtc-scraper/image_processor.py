@@ -33,59 +33,52 @@ class ImageProcessor:
                     {
                         "role": "system",
                         "content": """You are an expert at reading Kannada RTC (Village Account Form) documents. 
-            Your task is to accurately extract specific fields from the document.
+            Your task is to extract specific fields from the document.
 
-            CRITICAL FIELD LOCATIONS AND PATTERNS:
+            FIELD LOCATIONS:
             1. Survey Number (ಸರ್ವೆ ನಂಬರ್):
-               - Located in top-left section
-               - Look for a clear number (usually 1-3 digits)
-               - Common location: Under "1. ಸರ್ವೆ ಸಂಖ್ಯೆ"
+               - Look for numbers in the top-left section
+               - Usually 1-3 digits
+               - Common label: "ಸರ್ವೆ ಸಂಖ್ಯೆ"
 
             2. Surnoc:
-               - Always return "*" (this is a constant)
+               - Always return "*"
 
             3. Hissa (ಹಿಸ್ಸಾ):
-               - Located near Survey Number
+               - Look for numbers near Survey Number
                - Usually a single digit
-               - Look for "2. ಹಿಸ್ಸಾ" followed by a number
+               - Common label: "ಹಿಸ್ಸಾ"
 
             4. Administrative Divisions:
-               Look in the header section for these fields in order:
-               a) Village (ಗ್ರಾಮ): After ಗ್ರಾಮ: or ಗ್ರಾಮದ ಹೆಸರು
-               b) Hobli (ಹೋಬಳಿ): After ಹೋಬಳಿ:
-               c) Taluk (ತಾಲ್ಲೂಕು): After ತಾಲ್ಲೂಕು:
-               d) District (ಜಿಲ್ಲೆ): After ಜಿಲ್ಲೆ:
+               Look in the header section for:
+               - Village (ಗ್ರಾಮ): After ಗ್ರಾಮ: or ಗ್ರಾಮದ ಹೆಸರು
+               - Hobli (ಹೋಬಳಿ): After ಹೋಬಳಿ:
+               - Taluk (ತಾಲ್ಲೂಕು): After ತಾಲ್ಲೂಕು:
+               - District (ಜಿಲ್ಲೆ): After ಜಿಲ್ಲೆ:
 
             EXTRACTION RULES:
             1. For Survey Number and Hissa:
-               - Extract ONLY the numeric digits
-               - No extra characters or spaces
-               - If unclear, return "NA"
+               - Extract only numbers
+               - Remove any extra characters
+               - If unclear, make your best guess
 
             2. For Village, Hobli, Taluk, District:
-               - Translate Kannada names accurately to English
-               - Pay special attention to spelling
-               - Common values to look for:
-                 * Village: Look for "Devanahalli"
-                 * Hobli: Look for "Kasaba"
-                 * Taluk: Look for "Devenahalli"
-                 * District: Look for "Bangalore Rural"
-               - If text is unclear or not found, return "NA"
+               - Translate Kannada to English
+               - Use proper capitalization
+               - Common translations:
+                 * ದೇವನಹಳ್ಳಿ → Devanahalli
+                 * ಕಸಬಾ → Kasaba
+                 * ಬೆಂಗಳೂರು ಗ್ರಾಮಾಂತರ → Bangalore Rural
 
-            3. Double-check your translations:
-               - Ensure accurate spelling of place names
-               - Verify administrative hierarchy
-               - If unsure about translation, return "NA"
-
-            Return in exact JSON format:
+            Return in this JSON format:
             {
-                "Survey Number": "digits only",
+                "Survey Number": "number",
                 "Surnoc": "*",
-                "Hissa": "digits only",
-                "Village": "translated name",
-                "Hobli": "translated name",
-                "Taluk": "translated name",
-                "District": "translated name"
+                "Hissa": "number",
+                "Village": "name",
+                "Hobli": "name",
+                "Taluk": "name",
+                "District": "name"
             }"""
                     },
                     {
@@ -93,42 +86,15 @@ class ImageProcessor:
                         "content": [
                             {
                                 "type": "text",
-                                "text": """Analyze this RTC document carefully. Follow these exact steps:
+                                "text": """Please analyze this RTC document and extract the following information:
+            1. Survey Number (look for numbers in top-left)
+            2. Hissa (look for numbers near Survey Number)
+            3. Village (translate from Kannada)
+            4. Hobli (translate from Kannada)
+            5. Taluk (translate from Kannada)
+            6. District (translate from Kannada)
 
-            1. First, locate these fields in order:
-               a) Survey Number: Look for digits in top-left
-               b) Hissa: Look for single digit near Survey Number
-               c) Village: Find ಗ್ರಾಮ: and translate name after it
-               d) Hobli: Find ಹೋಬಳಿ: and translate name after it
-               e) Taluk: Find ತಾಲ್ಲೂಕು: and translate name after it
-               f) District: Find ಜಿಲ್ಲೆ: and translate name after it
-
-            2. For each field:
-               - Survey Number: Extract only digits
-               - Surnoc: Always use "*"
-               - Hissa: Extract only digits
-               - Village/Hobli/Taluk/District: Translate accurately
-
-            3. Common translations to verify:
-               - If you see ದೇವನಹಳ್ಳಿ → Devanahalli
-               - If you see ಕಸಬಾ → Kasaba
-               - If you see ಬೆಂಗಳೂರು ಗ್ರಾಮಾಂತರ → Bangalore Rural
-
-            4. Double-check your output matches expected format:
-               - Numbers should be digits only
-               - Place names should be properly capitalized
-               - Spelling should be accurate
-
-            Return in this exact JSON format:
-            {
-                "Survey Number": "22",  # if you see this number
-                "Surnoc": "*",         # always this value
-                "Hissa": "1",          # if you see this number
-                "Village": "Devanahalli",  # if you see ದೇವನಹಳ್ಳಿ
-                "Hobli": "Kasaba",         # if you see ಕಸಬಾ
-                "Taluk": "Devenahalli",    # if you see ದೇವನಹಳ್ಳಿ
-                "District": "Bangalore Rural"  # if you see ಬೆಂಗಳೂರು ಗ್ರಾಮಾಂತರ
-            }"""
+            Return the information in JSON format."""
                             },
                             {
                                 "type": "image_url",
@@ -141,7 +107,8 @@ class ImageProcessor:
                     }
                 ],
                 max_tokens=2000,
-                temperature=0.1
+                temperature=0.3,  # Increased temperature for more confident responses
+                top_p=0.9  # Added top_p for better response diversity
             )
             
             # Extract the JSON response

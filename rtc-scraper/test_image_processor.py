@@ -9,7 +9,7 @@ def test_image_processor():
     # Test with multiple images
     test_images = [
         "RTC.png",
-        "RTC_2015-08-19_16_54_00_To_2022-04-11_13_53_00__2020-2021___2020-2021.png"
+        "RTC_2015-08-19_16_54_00_To_2022-04-11_13_53_00__2017-2018___2017-2018.png"
     ]
     
     for image_name in test_images:
