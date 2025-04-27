@@ -6,8 +6,6 @@ A comprehensive system for tracking property records from Karnataka, India.
 
 ▶️ [Watch the Demo Video](https://drive.google.com/file/d/1yh5spXPfPgUSnUuVaQ8H921fpW-WMB4B/view?usp=drive_link)
 
-
-
 ## Project Overview
 
 getRTC is an innovative solution designed to modernize the way property records are accessed and managed in Karnataka. The system bridges the gap between traditional paper-based records and digital accessibility by:
@@ -242,48 +240,29 @@ The backend uses Django and PostgreSQL to:
 
 ## Challenges and Solutions
 
-### Challenge 1: Dynamic Form Handling
+### 1. Image Processing and OCR
 
-**Problem**: Complex cascading dropdown menus with varying options and no exact text matches.
+- **Challenge**: Extracting accurate property information from various image formats and qualities
+- **Solution**:
+  - Implemented a robust image preprocessing pipeline using OpenCV
+  - Utilized Tesseract OCR with custom training for better accuracy
+  - Added validation checks to ensure extracted data matches expected patterns
 
-**Solution**:
+### 2. Multilingual Document Processing
 
-- Implemented sophisticated dropdown handling system
-- Multi-level fuzzy matching:
-  - Exact match (case insensitive)
-  - Simplified text match
-  - Contains match
-  - Word-by-word matching
+- **Challenge**: Handling documents with mixed English and Kannada text, including inconsistent formatting and script variations
+- **Solution**:
+  - Implemented dual-language OCR support for both English and Kannada
+  - Developed custom text normalization for Kannada script variations
+  - Created a language detection system to automatically identify text language
+  - Built a post-processing pipeline to handle mixed-language content
+  - Added validation rules specific to each language's data patterns
 
-### Challenge 2: Historical Period and Year Selection
+### 3. Web Scraping Automation
 
-**Problem**: Inconsistent and unpredictable period/year organization.
+- **Challenge**: Automating the process of navigating and extracting data from the RTC website
+- **Solution**:
+  - Developed a headless browser automation system using Playwright
+  - Implemented smart waiting mechanisms to handle dynamic content loading
+  - Created a robust error handling system for network issues and timeouts
 
-**Solution**:
-
-- Dynamic extraction of available options
-- Comprehensive mapping of period values to years
-- Smart matching algorithm for target years
-- Real-time adaptation to website changes
-
-### Challenge 3: Multilingual Document Processing
-
-**Problem**: Mixed English and Kannada text with inconsistent formatting.
-
-**Solution**:
-
-- Leveraged OCR with language detection
-- Custom post-processing pipeline
-- Validation rules for extracted data
-- Error correction mechanisms
-
-### Challenge 4: Asynchronous Processing
-
-**Problem**: Long processing times for historical records.
-
-**Solution**:
-
-- Immediate response for initial processing
-- Background processing for historical records
-- Frontend polling for updates
-- Progressive loading of results
