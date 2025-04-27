@@ -76,7 +76,7 @@ class RTCScraper:
             
             async with async_playwright() as p:
                 browser = await p.chromium.launch(
-                    headless=False,  # Show the browser window
+                    headless=True,  # Show the browser window
                     slow_mo=500  # Add 500ms delay between actions
                 )
                 context = await browser.new_context(
