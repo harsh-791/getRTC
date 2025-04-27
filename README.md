@@ -4,7 +4,9 @@ A comprehensive system for tracking property records from Karnataka, India.
 
 ## Demo
 
-[Drive Link to Demo Video]
+▶️ [Watch the Demo Video](https://drive.google.com/file/d/1yh5spXPfPgUSnUuVaQ8H921fpW-WMB4B/view?usp=drive_link)
+
+
 
 ## Project Overview
 
