@@ -265,4 +265,3 @@ The backend uses Django and PostgreSQL to:
   - Developed a headless browser automation system using Playwright
   - Implemented smart waiting mechanisms to handle dynamic content loading
   - Created a robust error handling system for network issues and timeouts
-
